@@ -1,30 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  UserCheck, 
-  Key, 
-  Copy, 
-  Check, 
-  Building, 
-  Mail, 
-  HardDrive, 
-} from 'lucide-react';
-
-import Card from '../components/common/Card';
-import Button from '../components/common/Button';
+import { Mail, UserCheck, Calendar, Shield, LogOut } from 'lucide-react';
+import { getUserProfile } from '../services/api';
 import PageSkeleton from '../components/common/PageSkeleton';
 import ErrorMessage from '../components/common/ErrorMessage';
-import SampleDataNotice from '../components/common/SampleDataNotice';
-import { useToast } from '../context/ToastContext';
-import { getUserProfile } from '../services/api';
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [copiedKey, setCopiedKey] = useState(false);
-  const [apiKey, setApiKey] = useState('');
   const [error, setError] = useState(null);
-  const [isSampleData, setIsSampleData] = useState(false);
-  const { notify } = useToast();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -32,10 +15,8 @@ export default function ProfilePage() {
       try {
         const data = await getUserProfile();
         setProfile(data);
-        setIsSampleData(Boolean(data?.isSampleData));
-        if (data?.apiKey) setApiKey(data.apiKey);
       } catch (err) {
-        setError(err?.message || "Unable to load your profile.");
+        setError(err?.message || 'Unable to load your profile.');
       } finally {
         setLoading(false);
       }
@@ -43,137 +24,316 @@ export default function ProfilePage() {
     fetchUser();
   }, []);
 
-  const handleCopyKey = async () => {
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    return name
+      .split(/\s+/)
+      .map((part) => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase();
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr || dateStr === 'Not available') return null;
     try {
-      await navigator.clipboard.writeText(apiKey);
-      setCopiedKey(true);
-      notify('API key copied to clipboard.', 'success');
-      setTimeout(() => setCopiedKey(false), 2000);
+      return new Date(dateStr).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
     } catch {
-      notify('Clipboard access was denied. Select and copy the key manually.', 'error');
+      return null;
     }
   };
 
   if (loading) {
     return (
-      <div className="py-20 flex justify-center">
-        <PageSkeleton cards={2} rows={3} />
+      <div className="profile-page-container">
+        <div style={{ padding: '5rem 0', display: 'flex', justifyContent: 'center' }}>
+          <PageSkeleton cards={1} rows={4} />
+        </div>
       </div>
     );
   }
 
+  const displayName = profile?.name || 'Account';
+  const displayEmail = profile?.email || null;
+  const displayRole = profile?.role || 'User';
+  const memberSince = formatDate(profile?.memberSince);
+
   return (
-    <div className="space-y-8 animate-fade-in max-w-4xl mx-auto">
-      
-      {/* Header */}
-      <div className="pb-4 border-b border-slate-800/80">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-white font-['Outfit'] tracking-tight">
-          Profile and API access
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1">
-          Review your account details and any API credentials available to you.
-        </p>
+    <div className="profile-page-container animate-fade-in">
+      <style>{`
+        .profile-page-container {
+          max-width: 680px;
+          margin: 0 auto;
+          padding: 1rem;
+        }
+
+        /* ── Page Header ───────────────────────────────────── */
+        .profile-header {
+          margin-bottom: 2.5rem;
+          padding-bottom: 1.5rem;
+          border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .profile-header h1 {
+          font-size: clamp(1.5rem, 4vw, 2rem);
+          font-weight: 800;
+          color: #fff;
+          font-family: 'Outfit', sans-serif;
+          letter-spacing: -0.02em;
+          margin: 0 0 0.35rem;
+        }
+        .profile-header p {
+          color: #94a3b8;
+          font-size: 0.875rem;
+          margin: 0;
+        }
+
+        /* ── Card ──────────────────────────────────────────── */
+        .profile-card {
+          background: linear-gradient(145deg, rgba(15,23,42,0.95), rgba(15,23,42,0.80));
+          border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 1.5rem;
+          overflow: hidden;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(6,182,212,0.05);
+          transition: box-shadow 0.3s ease;
+        }
+        .profile-card:hover {
+          box-shadow: 0 24px 70px rgba(0,0,0,0.5), 0 0 0 1px rgba(6,182,212,0.12);
+        }
+
+        /* ── Hero Banner ───────────────────────────────────── */
+        .profile-banner {
+          height: 7rem;
+          background: linear-gradient(135deg, #0e7490 0%, #1e3a5f 40%, #0f172a 100%);
+          position: relative;
+        }
+        .profile-banner::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(ellipse at 30% 50%, rgba(6,182,212,0.25) 0%, transparent 70%);
+        }
+
+        /* ── Avatar ─────────────────────────────────────────── */
+        .profile-avatar-wrap {
+          display: flex;
+          align-items: flex-end;
+          gap: 1.25rem;
+          padding: 0 2rem;
+          margin-top: -2.5rem;
+          position: relative;
+          z-index: 1;
+        }
+        .profile-avatar {
+          width: 5rem;
+          height: 5rem;
+          border-radius: 1.25rem;
+          background: linear-gradient(135deg, #164e63, #0e7490);
+          border: 3px solid rgba(15,23,42,1);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: 'Outfit', sans-serif;
+          font-size: 1.5rem;
+          font-weight: 800;
+          color: #67e8f9;
+          flex-shrink: 0;
+          box-shadow: 0 8px 24px rgba(6,182,212,0.2);
+        }
+        .profile-avatar-info {
+          padding-bottom: 0.5rem;
+        }
+        .profile-avatar-name {
+          font-size: clamp(1.1rem, 3vw, 1.35rem);
+          font-weight: 800;
+          color: #f8fafc;
+          font-family: 'Outfit', sans-serif;
+          letter-spacing: -0.01em;
+          line-height: 1.2;
+          margin: 0 0 0.35rem;
+        }
+        .profile-role-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.35rem;
+          padding: 0.2rem 0.65rem;
+          border-radius: 999px;
+          background: rgba(6,182,212,0.12);
+          border: 1px solid rgba(6,182,212,0.25);
+          color: #67e8f9;
+          font-size: 0.68rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.12em;
+        }
+
+        /* ── Body ────────────────────────────────────────────── */
+        .profile-body {
+          padding: 1.75rem 2rem 2rem;
+        }
+
+        /* ── Info Rows ───────────────────────────────────────── */
+        .profile-section-label {
+          font-size: 0.65rem;
+          font-weight: 700;
+          color: #475569;
+          text-transform: uppercase;
+          letter-spacing: 0.18em;
+          margin-bottom: 1rem;
+        }
+        .profile-info-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+        .profile-info-row {
+          display: flex;
+          align-items: center;
+          gap: 0.875rem;
+          padding: 0.875rem 1.125rem;
+          border-radius: 0.875rem;
+          background: rgba(255,255,255,0.03);
+          border: 1px solid rgba(255,255,255,0.05);
+          transition: background 0.2s, border-color 0.2s;
+        }
+        .profile-info-row:hover {
+          background: rgba(255,255,255,0.055);
+          border-color: rgba(255,255,255,0.09);
+        }
+        .profile-info-icon {
+          width: 2.25rem;
+          height: 2.25rem;
+          border-radius: 0.625rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .profile-info-icon.cyan {
+          background: rgba(6,182,212,0.12);
+          color: #22d3ee;
+        }
+        .profile-info-icon.violet {
+          background: rgba(139,92,246,0.12);
+          color: #a78bfa;
+        }
+        .profile-info-icon.emerald {
+          background: rgba(16,185,129,0.12);
+          color: #34d399;
+        }
+        .profile-info-label {
+          font-size: 0.7rem;
+          color: #64748b;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          margin-bottom: 0.15rem;
+        }
+        .profile-info-value {
+          font-size: 0.9rem;
+          color: #e2e8f0;
+          font-weight: 500;
+          word-break: break-all;
+        }
+        .profile-info-value.muted {
+          color: #475569;
+          font-style: italic;
+        }
+
+        /* ── Divider ─────────────────────────────────────────── */
+        .profile-divider {
+          border: none;
+          border-top: 1px solid rgba(255,255,255,0.05);
+          margin: 1.5rem 0;
+        }
+
+        /* ── Responsive ──────────────────────────────────────── */
+        @media (max-width: 480px) {
+          .profile-page-container { padding: 0.75rem; }
+          .profile-body { padding: 1.25rem 1.25rem 1.5rem; }
+          .profile-avatar-wrap { padding: 0 1.25rem; gap: 1rem; }
+          .profile-avatar { width: 4.25rem; height: 4.25rem; font-size: 1.25rem; }
+        }
+      `}</style>
+
+      {/* ── Page Title ── */}
+      <div className="profile-header">
+        <h1>My Profile</h1>
+        <p>Your account details and session information.</p>
       </div>
-      {error && <ErrorMessage title="Profile unavailable" message={error} />}
-      {isSampleData && <SampleDataNotice />}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        
-        {/* User Info Card */}
-        <Card hoverable={false} className="border-slate-800 md:col-span-1">
-          <div className="flex flex-col items-center text-center space-y-4">
-            <div className="w-20 h-20 rounded-2xl bg-cyan-950 text-cyan-400 flex items-center justify-center font-bold text-2xl border-2 border-cyan-500/40 shadow-xl shadow-cyan-500/10">
-              {(profile?.name || "Account")
-                .split(/\s+/)
-                .map((part) => part[0])
-                .join("")
-                .slice(0, 2)
-                .toUpperCase()}
-            </div>
+      {error && (
+        <ErrorMessage title="Profile unavailable" message={error} />
+      )}
 
-            <div className="space-y-1">
-              <h2 className="font-extrabold text-lg text-white font-['Outfit']">
-              {profile?.name || "Account"}
-              </h2>
-              <span className="px-2.5 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800 text-[10px] font-bold uppercase tracking-wider">
-                {profile?.role || "User"}
-              </span>
-            </div>
+      {/* ── Profile Card ── */}
+      <div className="profile-card">
+        {/* Banner */}
+        <div className="profile-banner" />
 
-            <div className="w-full pt-4 border-t border-slate-800 space-y-3 text-xs text-slate-300 text-left">
-              <div className="flex items-center space-x-2">
-                <Building className="w-4 h-4 text-slate-500 shrink-0" />
-                <span className="truncate">{profile?.organization || "Organization not set"}</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Mail className="w-4 h-4 text-slate-500 shrink-0" />
-                <span className="truncate">{profile?.email || "Email unavailable"}</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <UserCheck className="w-4 h-4 text-slate-500 shrink-0" />
-                <span>Member since: {profile?.memberSince || "Not available"}</span>
-              </div>
-            </div>
+        {/* Avatar + Name row */}
+        <div className="profile-avatar-wrap">
+          <div className="profile-avatar">
+            {getInitials(displayName)}
           </div>
-        </Card>
-
-        {/* API Credentials & Usage */}
-        <div className="md:col-span-2 space-y-6">
-          
-          {/* API Keys */}
-          <Card
-            title="REST API & SDK Keys"
-            subtitle="Only keys issued by the service can authenticate API requests."
-            icon={Key}
-            className="border-slate-800"
-          >
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label htmlFor="profile-api-key" className="text-xs font-semibold text-slate-700">API key</label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    id="profile-api-key"
-                    type="text"
-                    readOnly
-                    value={apiKey || "No API key has been issued"}
-                    className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-cyan-300 focus:outline-none"
-                  />
-                  {apiKey && <button
-                    type="button"
-                    onClick={handleCopyKey}
-                    className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 transition-colors"
-                    title="Copy API key"
-                    aria-label="Copy API key"
-                  >
-                    {copiedKey ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                  </button>}
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center pt-2">
-                <p className="text-xs text-slate-500">
-                  {apiKey ? "Keep this key private. Never include it in client-side code." : "API key management is not available for this account."}
-                </p>
-              </div>
-            </div>
-          </Card>
-
-          {/* Usage metrics */}
-          <Card
-            title="Usage"
-            subtitle="Account usage details"
-            icon={HardDrive}
-            className="border-slate-800"
-          >
-            <p className="text-sm text-slate-500">
-              Usage and storage metrics are not available for this account.
-            </p>
-          </Card>
-
+          <div className="profile-avatar-info">
+            <p className="profile-avatar-name">{displayName}</p>
+            <span className="profile-role-badge">
+              <Shield size={10} />
+              {displayRole}
+            </span>
+          </div>
         </div>
 
-      </div>
+        {/* Body */}
+        <div className="profile-body">
+          <p className="profile-section-label">Account details</p>
 
+          <div className="profile-info-grid">
+            {/* Email */}
+            <div className="profile-info-row">
+              <div className="profile-info-icon cyan">
+                <Mail size={15} />
+              </div>
+              <div>
+                <p className="profile-info-label">Email address</p>
+                {displayEmail ? (
+                  <p className="profile-info-value">{displayEmail}</p>
+                ) : (
+                  <p className="profile-info-value muted">Not set</p>
+                )}
+              </div>
+            </div>
+
+            {/* Name */}
+            <div className="profile-info-row">
+              <div className="profile-info-icon violet">
+                <UserCheck size={15} />
+              </div>
+              <div>
+                <p className="profile-info-label">Display name</p>
+                <p className="profile-info-value">{displayName}</p>
+              </div>
+            </div>
+
+            {/* Member since */}
+            {memberSince && (
+              <div className="profile-info-row">
+                <div className="profile-info-icon emerald">
+                  <Calendar size={15} />
+                </div>
+                <div>
+                  <p className="profile-info-label">Member since</p>
+                  <p className="profile-info-value">{memberSince}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

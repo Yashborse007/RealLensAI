@@ -481,10 +481,11 @@ export const saveReport = async (req, res) => {
     }
   }
 
-  // Update in MongoDB
+  // Update in MongoDB (only when a connection is active)
+  const mongoose = (await import("mongoose")).default;
+  if (mongoose.connection.readyState === 1) {
   try {
     const Analysis = (await import("../models/Analysis.js")).default;
-    const mongoose = (await import("mongoose")).default;
     await Analysis.findOneAndUpdate(
       {
         $or: [
@@ -501,6 +502,7 @@ export const saveReport = async (req, res) => {
   } catch (dbErr) {
     console.error("[Report DB Update Error]", dbErr);
   }
+  } // end: mongoose connected guard
 
   // Update in inMemoryStore
   const inMem = findAnalysisById(String(id));

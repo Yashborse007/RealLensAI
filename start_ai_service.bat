@@ -1,6 +1,7 @@
 @echo off
 title RealLens AI - Python AI Microservice (Port 8000)
 cd /d "%~dp0"
+set "PYTHONIOENCODING=utf-8"
 echo ====================================================
 echo   Starting RealLens AI Python Service on Port 8000
 echo ====================================================
@@ -16,13 +17,13 @@ timeout /t 1 /nobreak >nul
 
 if exist ".venv\Scripts\python.exe" (
     echo Using project virtual environment (.venv)...
-    ".venv\Scripts\python.exe" -m uvicorn --app-dir ai-service main:app --host 127.0.0.1 --port 8000
+    ".venv\Scripts\python.exe" -m uvicorn --app-dir ai-service main:app --host 0.0.0.0 --port 8000
 ) else if exist "ai-service\venv\Scripts\python.exe" (
     echo Using ai-service virtual environment (ai-service\venv)...
-    "ai-service\venv\Scripts\python.exe" -m uvicorn --app-dir ai-service main:app --host 127.0.0.1 --port 8000
+    "ai-service\venv\Scripts\python.exe" -m uvicorn --app-dir ai-service main:app --host 0.0.0.0 --port 8000
 ) else (
     echo Using system Python...
-    python -m uvicorn --app-dir ai-service main:app --host 127.0.0.1 --port 8000
+    python -m uvicorn --app-dir ai-service main:app --host 0.0.0.0 --port 8000
 )
 
 pause

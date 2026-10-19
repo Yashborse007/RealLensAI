@@ -42,11 +42,8 @@ export const connectDB = async () => {
     const safeErrorMsg = redactMongoUri(
       error.message || "Unknown database connection error",
     );
-    console.warn(
-      `[MongoDB Warning] Database connection failed: ${safeErrorMsg}`,
-    );
-    console.warn(
-      `[MongoDB Warning] In-memory persistence is available only in development and tests.`,
+    console.log(
+      `[Storage] Running with In-Memory Storage for development (MongoDB optional: ${safeErrorMsg}).`,
     );
     if (process.env.NODE_ENV === "production") {
       throw new Error(

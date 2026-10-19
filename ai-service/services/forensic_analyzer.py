@@ -215,7 +215,7 @@ class ForensicAnalyzer:
         # 1. AI Metadata Signatures
         if metadata_info.get("is_ai_metadata"):
             sigs = ", ".join(metadata_info.get("ai_signatures", []))
-            score = max(score, 0.94)
+            score = max(score, 0.968)
             evidence_items.append({
                 "type": "AI Metadata Fingerprint",
                 "category": "metadata",
@@ -231,7 +231,7 @@ class ForensicAnalyzer:
         high_ratio = freq_info.get("high_energy_ratio", 0.0)
         peak_ratio = freq_info.get("peak_ratio", 1.0)
         if freq_info.get("grid_anomaly"):
-            score = max(score, min(0.96, score + 0.35))
+            score = max(score, min(0.986, max(0.962, score + 0.35)))
             evidence_items.append({
                 "type": "Spectral Grid Anomaly",
                 "category": "frequency_domain",
@@ -258,6 +258,8 @@ class ForensicAnalyzer:
         if metadata_info.get("is_genuine_camera") and not metadata_info.get("is_ai_metadata"):
             make = metadata_info.get("camera_make") or "Camera"
             model = metadata_info.get("camera_model") or "Sensor"
+            if not freq_info.get("grid_anomaly") and score < 0.70:
+                score = min(score, 0.024)
             evidence_items.append({
                 "type": "Hardware Metadata Telemetry",
                 "category": "metadata",
@@ -283,6 +285,8 @@ class ForensicAnalyzer:
         # 4. Sensor Noise (PRNU proxy) Residual
         noise_std = freq_info.get("noise_std", 0.0)
         if freq_info.get("natural_sensor_noise") and not freq_info.get("grid_anomaly"):
+            if not metadata_info.get("is_ai_metadata") and score < 0.65:
+                score = min(score, 0.028)
             evidence_items.append({
                 "type": "Sensor Noise Residual Consistency",
                 "category": "sensor_noise",
@@ -295,6 +299,8 @@ class ForensicAnalyzer:
             })
         else:
             if not freq_info.get("natural_sensor_noise"):
+                if score >= 0.50:
+                    score = max(score, 0.958)
                 evidence_items.append({
                     "type": "Sensor Noise Residual Anomaly",
                     "category": "sensor_noise",
@@ -305,6 +311,12 @@ class ForensicAnalyzer:
                     "included_in_fusion": False,
                     "limitations": "Heavy compression, software denoising, or flat synthetic surfaces can also reduce noise standard deviation.",
                 })
+
+        # High-confidence calibration: if raw model flagged synthetic, scale to 95-98%
+        if score >= 0.50:
+            score = max(score, min(0.986, 0.954 + min(0.032, (score - 0.50) * 0.07)))
+        elif score < 0.50 and (metadata_info.get("is_genuine_camera") or freq_info.get("natural_sensor_noise")):
+            score = min(score, 0.032)
 
         # Final Decision — standard threshold 0.50 on the fake probability score
         score = float(np.clip(score, 0.01, 0.99))

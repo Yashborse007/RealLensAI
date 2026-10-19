@@ -1,3 +1,4 @@
+// RealLens AI Production API Gateway
 import dotenv from "dotenv";
 dotenv.config();
 
